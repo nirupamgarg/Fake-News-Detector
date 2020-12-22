@@ -1,0 +1,60 @@
+# Importing The Libraries
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+
+dataset = pd.read_csv('data.csv')
+
+# Cleaning the texts
+import re
+import nltk
+nltk.download('stopwords')
+from nltk.corpus import stopwords
+from nltk.stem.porter import PorterStemmer
+body_corpus = []
+headline_corpus = []
+for i in range(0, 4009):   
+    body = re.sub('[^a-zA-Z]', ' ', str(dataset['Body'][i]))
+    body = body.lower()
+    body = body.split()
+    ps_body = PorterStemmer()
+    body = [ps_body.stem(word) for word in body if not word in set(stopwords.words('english'))]
+    body = ' '.join(body)
+    body_corpus.append(body)
+    
+    headline = re.sub('[^a-zA-Z]', ' ', str(dataset['Headline'][i]))
+    headline = headline.lower()
+    headline = headline.split()
+    ps_headline = PorterStemmer()
+    headline = [ps_headline.stem(word) for word in headline if not word in set(stopwords.words('english'))]
+    headline = ' '.join(headline)
+    headline_corpus.append(headline)
+
+# Creating the Bag of Words Model
+from sklearn.feature_extraction.text import CountVectorizer
+cv = CountVectorizer(max_features = 1500)
+X1 = cv.fit_transform(body_corpus).toarray()
+y = dataset.iloc[:, 3].values
+X2 = cv.fit_transform(headline_corpus).toarray()
+
+from sklearn.model_selection import train_test_split
+X1_train, X1_test, y_train, y_test = train_test_split(X1, y, test_size = 0.20, random_state = 0)
+X2_train, X2_test, y_train, y_test = train_test_split(X2, y, test_size = 0.20, random_state = 0)
+
+# Fitting Random Forest Classification to the Training set
+from sklearn.ensemble import RandomForestClassifier
+body_classifier = RandomForestClassifier(n_estimators = 10, criterion = 'entropy', random_state = 0)
+body_classifier.fit(X1_train, y_train)
+# Predicting the Test set results
+y_pred_body = body_classifier.predict(X1_test)
+# Making the Confusion Matrix
+from sklearn.metrics import confusion_matrix
+cm_body = confusion_matrix(y_test, y_pred_body)
+
+headline_classifier = RandomForestClassifier(n_estimators = 10, criterion = 'entropy', random_state = 0)
+headline_classifier.fit(X1_train, y_train)
+# Predicting the Test set results
+y_pred_headline = headline_classifier.predict(X2_test)
+# Making the Confusion Matrix
+from sklearn.metrics import confusion_matrix
+cm_headline = confusion_matrix(y_test, y_pred_headline)
